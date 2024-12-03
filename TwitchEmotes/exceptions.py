@@ -4,3 +4,7 @@ class TwitchEmotesException(Exception):
 
 class ChannelNotFound(TwitchEmotesException):
     pass
+
+
+class APIError(TwitchEmotesException):
+    pass

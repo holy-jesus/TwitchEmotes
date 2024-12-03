@@ -1,10 +1,17 @@
+import json
+
 from aiohttp import ClientSession as _ClientSession
 
 from TwitchEmotes.utils import get_session as _get_session
-from TwitchEmotes.exceptions import ChannelNotFound
+from TwitchEmotes.exceptions import (
+    ChannelNotFound as _ChannelNotFound,
+    APIError as _APIError,
+)
+from TwitchEmotes.services.seventv.platform import Platform
 
 
 _GET_BY_PLATFORM_ID = "https://7tv.io/v3/users/{platform}/{id}"
+_GRAPHQL = "https://7tv.io/v3/gql"
 
 
 class SevenTVChannel:
@@ -12,35 +19,116 @@ class SevenTVChannel:
         self._session = session
 
     @classmethod
-    async def get_by_username(cls, username: str) -> "SevenTVChannel":
-        pass
+    async def get_by_username(
+        cls,
+        username: str,
+    ) -> "SevenTVChannel":
+        session = await _get_session()
+        data = json.dumps(
+            [
+                {
+                    "operationName": "SearchUsers",
+                    "variables": {"query": username},
+                    "query": """query SearchUsers($query: String!) {
+                        users(query: $query) {
+                            id
+                            username
+                            display_name
+                        }
+                    }""",
+                }
+            ]
+        )
+        response = await session.post(_GRAPHQL, data=data)
+        if response.status != 200:
+            raise _APIError(f"API returned {response.status}")  # TODO
+        data = await response.json()
+        for user in data[0]["data"]["users"]:
+            if user["username"] == username or user["display_name"] == username:
+                return await cls._get_by_seventv_id(user["id"])
+        raise _ChannelNotFound(f'Channel with username "{username}" not found')
 
     @classmethod
     async def get_by_id(
-        cls, seventv_id: str = None, twitch_id: str = None
+        cls,
+        platform: Platform,
+        id: str,
     ) -> "SevenTVChannel":
-        if seventv_id:
-            await cls._get_by_seventv_id(seventv_id)
-        elif twitch_id:
-            await cls._get_by_twitch_id(twitch_id)
-        else:
-            raise ValueError(
-                'At least one of "seventv_id" or "twitch_id" must be provided.'
+        session = await _get_session()
+        if platform not in Platform:
+            raise ValueError()
+        elif platform == Platform.SEVENTV:
+            return await cls._get_by_seventv_id(id)
+        url = _GET_BY_PLATFORM_ID.format(platform=platform, id=id)
+        response = await session.get(url)
+        if response.status == 404:
+            raise _ChannelNotFound(
+                f'The channel with ID "{id}" on the "{platform}" platform was not found.'
             )
+        elif response.status != 200:
+            raise _APIError(f"API returned")  # TODO
 
     @classmethod
     async def _get_by_seventv_id(cls, id: str) -> "SevenTVChannel":
         session = await _get_session()
-        session.get("")
-
-    @classmethod
-    async def _get_by_twitch_id(cls, id: str) -> "SevenTVChannel":
-        session = await _get_session()
-        response = await session.get(
-            _GET_BY_PLATFORM_ID.format(platform="twitch", id=id)
-        )
-        if response.status == 404:
-            raise ChannelNotFound(
-                f'The channel with ID "{id}" on the "twitch" platform was not found.'
-            )
-        
+        data = [
+            {
+                "operationName": "GetUserForUserPage",
+                "variables": {"id": "01FEGJ99QR000AENY3GSAKBAHP"},
+                "query": """query GetUserForUserPage($id: ObjectID!) {
+                    user(id: $id) {
+                        id
+                        username
+                        display_name
+                        created_at
+                        avatar_url
+                        style {
+                            color
+                            paint_id
+                            __typename
+                        }
+                        biography
+                        editors {
+                            id
+                            permissions
+                            visible
+                            user {
+                                id
+                                username
+                                display_name
+                                avatar_url
+                                style {
+                                    color
+                                    paint_id
+                                    __typename
+                                }
+                            __typename
+                        }
+                        __typename
+                    }
+                    emote_sets {
+                        id
+                        name
+                        capacity
+                        owner {
+                            id
+                            __typename
+                        }
+                        __typename
+                    }
+                    roles
+                    connections {
+                        id
+                        username
+                        display_name
+                        platform
+                        linked_at
+                        emote_capacity
+                        emote_set_id
+                        __typename
+                    }
+                    __typename
+                }
+            }""",
+            }
+        ]
