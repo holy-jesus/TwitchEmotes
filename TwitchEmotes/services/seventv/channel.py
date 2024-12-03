@@ -1,4 +1,6 @@
 import json
+from datetime import datetime
+from dataclasses import dataclass
 
 from aiohttp import ClientSession as _ClientSession
 
@@ -14,9 +16,43 @@ _GET_BY_PLATFORM_ID = "https://7tv.io/v3/users/{platform}/{id}"
 _GRAPHQL = "https://7tv.io/v3/gql"
 
 
+@dataclass
+class UserStyle:
+    color: int
+    color_id: str | None
+
+
+@dataclass
+class UserPartial:
+    id: str
+    username: str
+    display_name: str
+    avatar_url: str
+    style: UserStyle
+
+
+@dataclass
+class UserEditor:
+    id: str
+    permissions: int
+    visible: bool
+    user: UserPartial
+
+
 class SevenTVChannel:
-    def __init__(self, session: _ClientSession) -> None:
+    def __init__(self, session: _ClientSession, data: dict) -> None:
         self._session = session
+        self.id: str = data["id"]
+        self.username: str = data["username"]
+        self.display_name: str = data["display_name"]
+        self.created_at: datetime = datetime.fromisoformat(data["created_at"])
+        self.avatar_url: str = data["avatar_url"]
+        self.style = UserStyle(**data["style"])
+        self.biography: str = data["biography"]
+        self.editors: list[UserEditor] = [UserEditor(**e) for e in data["editors"]]
+        self.emote_sets: list  # TODO
+        self.roles: list[str] = data["roles"]
+        self.connections
 
     @classmethod
     async def get_by_username(
