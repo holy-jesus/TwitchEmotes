@@ -19,7 +19,7 @@ _GRAPHQL = "https://7tv.io/v3/gql"
 @dataclass
 class UserStyle:
     color: int
-    color_id: str | None
+    paint_id: str | None
 
 
 @dataclass
