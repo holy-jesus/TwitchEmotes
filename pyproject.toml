@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=75.6.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "TwitchEmotes"
+version = "0.0.1"
+dependencies = [
+    "aiohttp",
+]
+authors = [
+  { name="holy-jesus", email="hj@holy-coder.ru" },
+]
+description = ""
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Framework :: AsyncIO",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/holy-jesus/project"
+Issues = "https://github.com/holy-jesus/project/issues"

@@ -1,0 +1,2 @@
+class Emotes:
+    pass

@@ -1,0 +1,2 @@
+class FFZ:
+    pass
